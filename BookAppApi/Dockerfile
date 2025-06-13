@@ -1,23 +1,22 @@
-# Use the official ASP.NET 8 runtime image as base
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-WORKDIR /app
-EXPOSE 8080
-
-# Use the .NET SDK image to build the app
+# Build stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
+WORKDIR /app
 
-# Copy everything and restore dependencies
-COPY . . 
+# Copy csproj and restore
+COPY *.csproj ./
 RUN dotnet restore
 
-# Build and publish the app
-RUN dotnet publish -c Release -o /app/publish
+# Copy the rest of the files and publish
+COPY . ./
+RUN dotnet publish -c Release -o /out
 
-# Use the base image to run the app
-FROM base AS final
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-COPY --from=build /app/publish .
+COPY --from=build /out .
 
-# Run the application
+# Set port for Render (uses PORT environment variable)
+ENV ASPNETCORE_URLS=http://+:$PORT
+EXPOSE 10000
+
 ENTRYPOINT ["dotnet", "BookAppApi.dll"]
