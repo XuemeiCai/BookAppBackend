@@ -1,0 +1,51 @@
+## Build results
+bin/
+obj/
+out/
+
+## User-specific files
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+## OS generated files
+.DS_Store
+Thumbs.db
+
+## Rider IDE
+.idea/
+
+## Visual Studio Code
+.vscode/
+
+## ASP.NET sensitive files
+appsettings.Development.json
+appsettings.*.json
+secrets.json
+
+## Logs
+*.log
+
+## Others
+*.db
+*.mdb
+*.pdb
+
+## Dotnet CLI
+.project.lock.json
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## NuGet packages
+*.nupkg
+*.snupkg
+*.nuspec
+*.psmdcp
+*.scc
+
+# Auto-generated files
+Generated_Code/
+GeneratedFiles/
