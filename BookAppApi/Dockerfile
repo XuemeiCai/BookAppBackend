@@ -8,12 +8,12 @@ RUN dotnet restore
 
 # Copy the rest of the files and publish
 COPY . ./
-RUN dotnet publish -c Release -o out
+RUN dotnet publish -c Release -o /app/publish
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-COPY --from=build /out .
+COPY --from=build /app/publish ./
 
 # Set port for Render (uses PORT environment variable)
 ENV ASPNETCORE_URLS=http://+:$PORT
