@@ -4,15 +4,17 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using System.Text;
+using DotNetEnv;
 
 
 var builder = WebApplication.CreateBuilder(args);
+Env.Load();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:4200","https://localhost:4200")
+        policy.WithOrigins("http://localhost:4200","https://localhost:4200","https://bookappfrontend.netlify.app")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -44,8 +46,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("MongoDbSettings"));
 
+var mongoConnectionString = Environment.GetEnvironmentVariable("MONGODB_URI");
+if (string.IsNullOrEmpty(mongoConnectionString))
+{
+    throw new Exception("Missing MongoDB connection string in environment variable 'MONGODB_URI'");
+}
 builder.Services.AddSingleton<IMongoClient>(s =>
-    new MongoClient(builder.Configuration.GetSection("MongoDbSettings")["ConnectionString"]));
+    new MongoClient(mongoConnectionString));
 
 builder.Services.AddSingleton<BookListService>();
 builder.Services.AddSingleton<QuoteService>();
@@ -61,8 +68,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.Urls.Add("http://localhost:5000");
-app.Urls.Add("https://localhost:5001");
+app.Urls.Add($"https://*:{Environment.GetEnvironmentVariable("PORT") ?? "5001"}");
 
 app.UseAuthentication();  
 app.UseAuthorization();
