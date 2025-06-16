@@ -55,7 +55,7 @@ public class AuthController : ControllerBase
 
         var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
         var refreshToken = Guid.NewGuid().ToString();
-        _tokenStore.Save(refreshToken, model.Username, DateTime.UtcNow.AddMinutes(2));
+        _tokenStore.Save(refreshToken, model.Username, DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtConfig["RefreshExpiryMinutes"])));
 
         return Ok(new
         {
@@ -86,7 +86,7 @@ public class AuthController : ControllerBase
             );
             var refreshToken = Guid.NewGuid().ToString();
             _tokenStore.Remove(request.RefreshToken);
-            _tokenStore.Save(refreshToken, username!, DateTime.UtcNow.AddMinutes(2));
+            _tokenStore.Save(refreshToken, username!, DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtConfig["RefreshExpiryMinutes"])));
 
             return Ok(new
             {
