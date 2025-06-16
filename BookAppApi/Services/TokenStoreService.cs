@@ -1,17 +1,35 @@
+using BookAppApi.Models;
+
 namespace BookAppApi.Services
 {
     public class TokenStoreService
     {
-        private readonly Dictionary<string, string> _refreshTokens = new();
+        private readonly Dictionary<string, StoredRefreshToken> _refreshTokens = new();
 
-        public void Save(string token, string username)
+        public void Save(string token, string username, DateTime expiry)
         {
-            _refreshTokens[token] = username;
+            _refreshTokens[token] = new StoredRefreshToken
+            {
+                Username = username,
+                Expiry = expiry
+            };
         }
 
-        public bool TryGetUser(string token, out string username)
+        public bool TryGetUser(string token, out string? username)
         {
-            return _refreshTokens.TryGetValue(token, out username!);
+            if (_refreshTokens.TryGetValue(token, out var storedToken))
+            {
+                if (storedToken.Expiry >= DateTime.UtcNow)
+                {
+                    username = storedToken.Username;
+                    return true;
+                }
+                _refreshTokens.Remove(token);
+                username = null;
+                return false;
+            }
+            username = null;
+            return false;
         }
 
         public void Remove(string token)

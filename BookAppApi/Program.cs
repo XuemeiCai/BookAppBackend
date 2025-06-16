@@ -35,6 +35,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.Zero,
             ValidIssuer = jwtConfig["Issuer"],
             ValidAudience = jwtConfig["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!))
@@ -56,6 +57,7 @@ builder.Services.AddSingleton<IMongoClient>(s =>
 
 builder.Services.AddSingleton<BookListService>();
 builder.Services.AddSingleton<QuoteService>();
+builder.Services.AddSingleton<UserService>();
 
 
 var app = builder.Build();
@@ -68,7 +70,7 @@ if (app.Environment.IsDevelopment())
 }
 
 //app.UseHttpsRedirection();
-app.Urls.Add($"http://*:{Environment.GetEnvironmentVariable("PORT") ?? "5000"}");
+app.Urls.Add($"https://*:{Environment.GetEnvironmentVariable("PORT") ?? "5001"}");
 
 app.UseAuthentication();  
 app.UseAuthorization();

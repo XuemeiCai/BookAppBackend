@@ -15,55 +15,63 @@ public class AuthController : ControllerBase
 {
     private readonly IConfiguration _config;
     private readonly TokenStoreService _tokenStore;
+    private readonly UserService _userService;
 
-    public AuthController(IConfiguration config, TokenStoreService tokenStore)
+
+
+    public AuthController(IConfiguration config, TokenStoreService tokenStore, UserService userService)
     {
         _config = config;
         _tokenStore = tokenStore;
+        _userService = userService;
     }
 
     [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginModel model)
+    public async Task<IActionResult> Login([FromBody] LoginModel model)
     {
-        if (model.Username == "user" && model.Password == "password")
+        var user = await _userService.GetByUsernameAsync(model.Username);
+        if (user == null)
         {
-            // Load JWT configuration
-            var jwtConfig = _config.GetSection("JwtSettings");
-            var secretKey = jwtConfig["SecretKey"]!;
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            // Generate JWT access token
-            var token = new JwtSecurityToken(
-                issuer: jwtConfig["Issuer"],
-                audience: jwtConfig["Audience"],
-                claims: new[] { new Claim(ClaimTypes.Name, model.Username) },
-                expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtConfig["ExpiryMinutes"])),
-                signingCredentials: creds
-            );
-            var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
-
-            // Generate refresh token
-            var refreshToken = Guid.NewGuid().ToString();
-            _tokenStore.Save(refreshToken, model.Username);
-
-            return Ok(new
-            {
-                success = true,
-                token = accessToken,
-                refreshToken,
-                username = model.Username
-            });
+            return Unauthorized(new { success = false, message = "Invalid username" });
         }
 
-        return Unauthorized(new { success = false, message = "Invalid credentials" });
+        bool isPasswordValid = BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash);
+        if (!isPasswordValid)
+        {
+            return Unauthorized(new { success = false, message = "Invalid password" });
+        }
+        var jwtConfig = _config.GetSection("JwtSettings");
+        var secretKey = jwtConfig["SecretKey"]!;
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: jwtConfig["Issuer"],
+            audience: jwtConfig["Audience"],
+            claims: new[] { new Claim(ClaimTypes.Name, model.Username) },
+            expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtConfig["ExpiryMinutes"])),
+            signingCredentials: creds
+        );
+
+        var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
+        var refreshToken = Guid.NewGuid().ToString();
+        _tokenStore.Save(refreshToken, model.Username, DateTime.UtcNow.AddMinutes(2));
+
+        return Ok(new
+        {
+            success = true,
+            token = accessToken,
+            refreshToken,
+            username = model.Username
+        });
     }
+
 
     // refresh token
     [HttpPost("refresh")]
     public IActionResult Refresh([FromBody] RefreshRequest request)
     {
-        if (_tokenStore.TryGetUser(request.RefreshToken, out string username))
+        if (_tokenStore.TryGetUser(request.RefreshToken, out string? username))
         {
             var jwtConfig = _config.GetSection("JwtSettings");
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig["SecretKey"]!));
@@ -72,15 +80,19 @@ public class AuthController : ControllerBase
             var token = new JwtSecurityToken(
                 issuer: jwtConfig["Issuer"],
                 audience: jwtConfig["Audience"],
-                claims: new[] { new Claim(ClaimTypes.Name, username) },
+                claims: new[] { new Claim(ClaimTypes.Name, username!) },
                 expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtConfig["ExpiryMinutes"])),
                 signingCredentials: creds
             );
+            var refreshToken = Guid.NewGuid().ToString();
+            _tokenStore.Remove(request.RefreshToken);
+            _tokenStore.Save(refreshToken, username!, DateTime.UtcNow.AddMinutes(2));
 
             return Ok(new
             {
                 success = true,
                 token = new JwtSecurityTokenHandler().WriteToken(token),
+                refreshToken,
                 username
             });
         }
@@ -95,6 +107,26 @@ public class AuthController : ControllerBase
     public IActionResult Secret()
     {
         return Ok("You accessed a protected route!");
+    }
+
+    // register new user
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] LoginModel model)
+    {
+        var existingUser = await _userService.GetByUsernameAsync(model.Username);
+        if (existingUser != null)
+        {
+            return BadRequest(new { success = false, message = "Username already exists" });
+        }
+
+        var user = new User
+        {
+            Username = model.Username,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password)
+        };
+
+        await _userService.CreateAsync(user);
+        return Ok(new { success = true, message = "User registered successfully" });
     }
 
    
