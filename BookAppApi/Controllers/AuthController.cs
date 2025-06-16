@@ -6,7 +6,6 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using BookAppApi.Services;
-using System.Threading.Tasks;
 
 namespace BookAppApi.Controllers;
 

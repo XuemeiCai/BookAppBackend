@@ -69,7 +69,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-//app.UseHttpsRedirection();
 app.Urls.Add($"http://*:{Environment.GetEnvironmentVariable("PORT") ?? "5000"}");
 
 app.UseAuthentication();  
