@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using BookAppApi.Services;
+using System.Threading.Tasks;
 
 namespace BookAppApi.Controllers;
 
@@ -55,7 +56,7 @@ public class AuthController : ControllerBase
 
         var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
         var refreshToken = Guid.NewGuid().ToString();
-        _tokenStore.Save(refreshToken, model.Username, DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtConfig["RefreshExpiryMinutes"])));
+        await _tokenStore.SaveAsync(refreshToken, model.Username, DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtConfig["RefreshExpiryMinutes"])));
 
         return Ok(new
         {
@@ -69,9 +70,9 @@ public class AuthController : ControllerBase
 
     // refresh token
     [HttpPost("refresh")]
-    public IActionResult Refresh([FromBody] RefreshRequest request)
-    {
-        if (_tokenStore.TryGetUser(request.RefreshToken, out string? username))
+    public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
+    {   var (success, username) = await _tokenStore.TryGetUserAsync(request.RefreshToken);
+        if (success)
         {
             var jwtConfig = _config.GetSection("JwtSettings");
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig["SecretKey"]!));
@@ -85,8 +86,7 @@ public class AuthController : ControllerBase
                 signingCredentials: creds
             );
             var refreshToken = Guid.NewGuid().ToString();
-            _tokenStore.Remove(request.RefreshToken);
-            _tokenStore.Save(refreshToken, username!, DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtConfig["RefreshExpiryMinutes"])));
+            await _tokenStore.UpdateTokenAsync(request.RefreshToken, refreshToken, DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtConfig["RefreshExpiryMinutes"])));
 
             return Ok(new
             {
@@ -96,7 +96,6 @@ public class AuthController : ControllerBase
                 username
             });
         }
-
         return Unauthorized(new { success = false, message = "Invalid refresh token" });
     }
 

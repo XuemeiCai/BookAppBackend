@@ -70,7 +70,7 @@ if (app.Environment.IsDevelopment())
 }
 
 //app.UseHttpsRedirection();
-app.Urls.Add($"http://*:{Environment.GetEnvironmentVariable("PORT") ?? "5000"}");
+app.Urls.Add($"https://*:{Environment.GetEnvironmentVariable("PORT") ?? "5001"}");
 
 app.UseAuthentication();  
 app.UseAuthorization();
