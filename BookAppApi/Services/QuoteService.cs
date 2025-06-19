@@ -23,5 +23,15 @@ namespace BookAppApi.Services
             return quote;
         }
 
+        public async Task UpdateAsync(string id, Quote updatedQuote)
+        {
+            await _quotes.ReplaceOneAsync(quote => quote.Id == id, updatedQuote);
+        }
+
+        public async Task DeleteAsync(string id)
+        {
+            await _quotes.DeleteOneAsync(quote => quote.Id == id);
+        }
+
     }
 }

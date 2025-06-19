@@ -70,7 +70,8 @@ public class AuthController : ControllerBase
     // refresh token
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
-    {   var (success, username) = await _tokenStore.TryGetUserAsync(request.RefreshToken);
+    {
+        var (success, username) = await _tokenStore.TryGetUserAsync(request.RefreshToken);
         if (success)
         {
             var jwtConfig = _config.GetSection("JwtSettings");
@@ -125,6 +126,14 @@ public class AuthController : ControllerBase
 
         await _userService.CreateAsync(user);
         return Ok(new { success = true, message = "User registered successfully" });
+    }
+    
+    // Check if username already exists
+    [HttpGet("exists/{username}")]
+    public async Task<IActionResult> CheckUsernameExists(string username)
+    {
+        var user = await _userService.GetByUsernameAsync(username);
+        return Ok(user != null);
     }
 
    
